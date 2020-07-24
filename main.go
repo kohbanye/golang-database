@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"flag"
 
 	_"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -23,8 +24,9 @@ func main() {
 		log.Fatalf("Cannot Connect to Database: %s", err)
 	}
 
+  flag.Parse()
 	fmt.Println("Connected!")
 	city := City{}
-	db.Get(&city, "SELECT * FROM city WHERE Name = 'Tokyo'")
-	fmt.Printf("Tokyoの人口は%d人です\n", city.Population)
+	db.Get(&city, "SELECT * FROM city WHERE Name = ?", flag.Args()[0])
+	fmt.Printf("%sの人口は%d人です\n", flag.Args()[0], city.Population)
 }
