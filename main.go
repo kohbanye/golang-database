@@ -4,10 +4,15 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"flag"
+  "net/http"
+	"github.com/labstack/echo"
 
 	_"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+)
+
+var (
+	db *sqlx.DB
 )
 
 type City struct {
@@ -19,14 +24,28 @@ type City struct {
 }
 
 func main() {
-	db, err := sqlx.Connect("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True&loc=Local", os.Getenv("DB_USERNAME"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOSTNAME"), os.Getenv("DB_PORT"), os.Getenv("DB_DATABASE")))
+	_db, err := sqlx.Connect("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True&loc=Local", os.Getenv("DB_USERNAME"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOSTNAME"), os.Getenv("DB_PORT"), os.Getenv("DB_DATABASE")))
 	if err != nil {
 		log.Fatalf("Cannot Connect to Database: %s", err)
-	}
+  }
+  db = _db
 
-  flag.Parse()
-	fmt.Println("Connected!")
-	city := City{}
-	db.Get(&city, "SELECT * FROM city WHERE Name = ?", flag.Args()[0])
-	fmt.Printf("%sの人口は%d人です\n", flag.Args()[0], city.Population)
+	e := echo.New()
+	
+	e.GET("/cities/:cityName", getCityInfoHandler)
+	
+	e.Start(":4000")
+}
+
+func getCityInfoHandler(c echo.Context) error {
+  cityName := c.Param("cityName")
+  fmt.Println(cityName)
+
+  city := City{}
+  db.Get(&city, "SELECT * FROM city WHERE Name = ?", cityName)
+  if city.Name == "" {
+    return c.NoContent(http.StatusNotFound)
+  }
+
+  return c.JSON(http.StatusOK, city)
 }
