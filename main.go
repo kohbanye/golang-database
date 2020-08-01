@@ -28,6 +28,28 @@ type City struct {
 	Population  int    `json:"population,omitempty"  db:"Population"`
 }
 
+type CountryName struct {
+	Name string `json:"name,omitempty" db:"Name"`
+}
+
+type Country               struct    {
+	Code              string    `json:"code,omitempty" db:"Code"`
+	Name              string    `json:"name,omitempty" db:"Name"`
+	Continent         string    `json:"continent,omitempty" db:"Continent"`
+	Region            string    `json:"region,omitempty" db:"Region"`
+	SurfaceArea       float32   `json:"surfaceArea,omitempty" db:"SurfaceArea"`
+	IndepYear         int       `json:"indepYear,omitempty"  db:"IndepYear"`
+	Population        int       `json:"population,omitempty" db:"Population"`
+	LifeExpectancy    float32   `json:"lifeExpectancy,omitempty" db:"LifeExpectancy"`
+	GNP               float32   `json:"GNP,omitempty" db:"GNP"`
+	GNPOld            float32   `json:"GNPOld,omitempty" db:"GNPOld"`
+	LocalName         string    `json:"localName ,omitempty" db:"LocalName "`
+	GovernmentForm    string    `json:"governmentForm,omitempty" db:"GovernmentForm"`
+	HeadOfState       string    `json:"headOfState,omitempty" db:"HeadOfState"`
+	Capital           int       `json:"capital,omitempty" db:"Capital"`
+	Code2             string    `json:"code2,omitempty" db:"Code2"`
+}
+
 func main() {
 	_db, err := sqlx.Connect("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8&parseTime=True&loc=Local", os.Getenv("DB_USERNAME"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOSTNAME"), os.Getenv("DB_PORT"), os.Getenv("DB_DATABASE")))
 	if err != nil {
@@ -46,11 +68,13 @@ func main() {
 	})
 	e.POST("/login", postLoginHandler)
 	e.POST("/signup", postSignUpHandler)
+	e.GET("/countries", getCountryHandler)
 
 	withLogin := e.Group("")
 	withLogin.Use(checkLogin)
 	withLogin.GET("/cities/:cityName", getCityInfoHandler)
 	withLogin.GET("/whoami", getWhoAmIHandler)
+	withLogin.GET("/countries/:countryName", getCountryInfoHandler)
 
 	e.Start(":4000")
 }
@@ -157,8 +181,35 @@ func getCityInfoHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, city)
 }
 
+func getCountryHandler(c echo.Context) error {
+	countryName := []string{}
+	err := db.Select(&countryName, "SELECT Name FROM country")
+	if err != nil {
+		return c.String(http.StatusInternalServerError, fmt.Sprintf("db error: %v", err))
+	}
+
+	return c.JSON(http.StatusOK, countryName)
+}
+
+func getCountryInfoHandler(c echo.Context) error {
+	countryName := c.Param("countryName")
+	fmt.Println(countryName)
+
+	country := Country{}
+	db.Select(&country, "SELECT * FROM country WHERE Name = ?", countryName)
+	if country.Name == "" {
+		return c.NoContent(http.StatusNotFound)
+	}
+
+	return c.JSON(http.StatusOK, country)
+}
+
 func getWhoAmIHandler(c echo.Context) error {
-	return c.JSON(http.StatusOK, Me{
-		Username: c.Get("userName").(string),
-	})
+	u, ok := c.Get("userName").(string)
+		if ok {
+				return c.JSON(http.StatusOK, Me{
+			Username: u,
+		})
+	}
+	return nil
 }
